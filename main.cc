@@ -13,7 +13,7 @@
 using namespace std;
 
 #define EPOLL_SIZE 1000
-#define BUF_SIZE 1000
+#define BUF_SIZE 10000000
 
 //fuck!!!!
 struct sockaddr_in serv_addr;
@@ -102,10 +102,11 @@ int server_multiplexing (int serv_sock) {
 
 	while(true) {
 		
-		cout << "Epoll waiting...." << endl;
+		//cout << "Epoll waiting...." << endl;
 		event_cnt = epoll_wait(epfd, ep_events, EPOLL_SIZE, -1);
 		if(event_cnt == -1) {
 			cout << "Epoll wait fails, stop multiplexing" << endl;
+			close(epfd);
 			return -1;
 		}
 
@@ -118,9 +119,13 @@ int server_multiplexing (int serv_sock) {
 				if(clnt_sock == -1)
 					return -1;
 				cout << "Accept done" << endl;
+				event.events=EPOLLIN;
+				event.data.fd=clnt_sock;
+				epoll_ctl(epfd, EPOLL_CTL_ADD, clnt_sock, &event);
 			}
 			else {
 				char buf [BUF_SIZE];
+				cout << buf << endl;
 				int str_len = read(ep_events[i].data.fd, buf, BUF_SIZE);
 				if(str_len == 0) {
 					//close_request
@@ -129,11 +134,13 @@ int server_multiplexing (int serv_sock) {
 					cout << "Client closed" << endl;
 				}
 				else {
-					cout << "Client FD : " << ep_events[i].data.fd << buf << endl;
+					cout << "Client FD : " << ep_events[i].data.fd << " : " << buf << endl;
 				}
 			}
 		}
-	}	
+	}
+	close(epfd);
+
 }
 
 
